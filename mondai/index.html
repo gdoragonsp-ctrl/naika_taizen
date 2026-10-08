@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<title>内科大全 確認問題集</title>
+<style>
+:root{--bg:#fafaf7;--fg:#1a1a1a;--line:#d8d6cf;--sub:#6b6a66;--card:#fff;--ok:#2f6f4f;--ng:#a33a2c;--acc:#24476b}
+@media(prefers-color-scheme:dark){:root{--bg:#17181a;--fg:#ecebe7;--line:#3a3b3e;--sub:#a3a29d;--card:#202124;--ok:#7fc29b;--ng:#e08a7c;--acc:#9bbbe0}}
+*{box-sizing:border-box}[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.75 "Hiragino Sans","Noto Sans JP",sans-serif;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+header{position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--line);padding:10px 16px;display:flex;gap:10px;align-items:center;z-index:2}
+header h1{font-size:16px;margin:0;flex:1}
+main{max-width:760px;margin:0 auto;padding:12px 16px 80px}
+button{font:inherit;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 14px;cursor:pointer}
+button.on{background:var(--acc);color:var(--bg);border-color:var(--acc)}
+.tabs{display:flex;gap:8px;margin:8px 0 14px;flex-wrap:wrap}
+.ch{display:flex;gap:10px;align-items:center;width:100%;text-align:left;margin:6px 0;padding:10px 12px}
+.ch .k{color:var(--acc);font-weight:700;min-width:3.6em}.ch .t{flex:1}.ch .p{color:var(--sub);font-size:13px;white-space:nowrap}
+.bar{height:4px;background:var(--line);border-radius:2px;margin:10px 0}.bar i{display:block;height:4px;background:var(--ok);border-radius:2px}
+.q{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin:12px 0}
+.q .n{color:var(--sub);font-size:13px}.case{background:var(--fg);color:var(--bg);border-radius:3px;font-size:12px;padding:1px 6px;margin-right:6px}
+.blank{display:inline-block;min-width:3em;border-bottom:1.5px solid var(--fg);text-align:center}
+.a{border-top:1px dashed var(--line);margin-top:10px;padding-top:10px}.a b{color:var(--acc)}.e{color:var(--sub);font-size:14.5px;margin-top:4px}
+.row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}.ok.on{background:var(--ok);border-color:var(--ok)}.ng.on{background:var(--ng);border-color:var(--ng)}
+input{font:inherit;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 12px;flex:1;min-width:12em;-webkit-user-select:text;user-select:text}
+.note{color:var(--sub);font-size:13px;margin:14px 0}
+canvas{display:block;max-width:100%;pointer-events:none}button:disabled{opacity:.35}
+@media print{body{display:none}}
+</style></head><body>
+<header><button id="back" hidden>← 章の一覧</button><h1 id="ttl">内科大全 確認問題集</h1></header>
+<main id="m"></main>
+<script src="data.js"></script>
+<script>
+(function(){
+const D=window.MONDAI||{chs:[]},M=D.chs,VOL={"病":"病棟編","救":"救急編","外":"外来編"},KEY="naika-mondai-v1";
+let rec={};try{rec=JSON.parse(localStorage.getItem(KEY)||"{}")}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(rec))}catch(e){}};
+const get=(k,d)=>{try{return JSON.parse(localStorage.getItem(KEY+k))||d}catch(e){return d}},put=(k,v)=>{try{localStorage.setItem(KEY+k,JSON.stringify(v))}catch(e){}};
+const today=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+function logOne(){const g=get("-log",{});g[today()]=(g[today()]||0)+1;const ks=Object.keys(g).sort();while(ks.length>400)delete g[ks.shift()];put("-log",g)}
+const m=document.getElementById("m"),back=document.getElementById("back"),ttl=document.getElementById("ttl");
+let vol="病",only=false;
+const esc=s=>s.replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+let key=null;const b64=x=>Uint8Array.from(atob(x),c=>c.charCodeAt(0));
+const normPw=p=>p.normalize("NFKC").toUpperCase().replace(/[^A-Z0-9]/g,"");
+async function dec(x){const b=b64(x);return new Uint8Array(await crypto.subtle.decrypt({name:"AES-GCM",iv:b.slice(0,12)},key,b.slice(12)))}
+async function unlock(pw){const base=await crypto.subtle.importKey("raw",new TextEncoder().encode(normPw(pw)),"PBKDF2",false,["deriveKey"]);
+  key=await crypto.subtle.deriveKey({name:"PBKDF2",salt:b64(D.s),iterations:D.it,hash:"SHA-256"},base,{name:"AES-GCM",length:256},false,["decrypt"]);
+  try{await dec(D.c);return true}catch(e){key=null;return false}}
+async function open_(c,n){return JSON.parse(new TextDecoder().decode(await dec(c.d[n])))}
+function gate(msg){back.hidden=true;m.innerHTML=`<div class="q"><div>問題集の本の最後（奥付）に書いてある合言葉を入れてください。</div><div class="row"><input id="pw" autocomplete="off" autocapitalize="characters" placeholder="XXXX-XXXX-XXXX-XXXX"><button id="go">開く</button></div><div class="note">${msg||"この端末では、一度入れると次からは聞かれません。"}</div></div>`;
+  const go=async()=>{const p=document.getElementById("pw").value;m.querySelector(".note").textContent="確かめています…";
+    if(await unlock(p)){try{localStorage.setItem(KEY+"-pw",normPw(p))}catch(e){}list()}else gate("合言葉が違います。")};
+  document.getElementById("go").onclick=go;document.getElementById("pw").onkeydown=e=>{if(e.key=="Enter")go()}}
+const done=c=>{const r=rec[c.k]||{};return[Object.values(r).filter(v=>v==1).length,Object.values(r).filter(v=>v==2).length]};
+function list(){back.hidden=true;ttl.textContent="内科大全 確認問題集";let h="";
+  const last=get("-last",null),li=last?M.findIndex(c=>c.k==last.k):-1,g=get("-log",{}),days=Object.keys(g).length,sum=Object.values(g).reduce((a,b)=>a+b,0);
+  let ao=0,at=0;M.forEach(c=>{ao+=done(c)[0];at+=c.n});
+  h+=`<div class="q"><div>今日 ${g[today()]||0}問　これまで ${sum}問（${days}日）</div><div class="note" style="margin:4px 0 0">全体でできた問題 ${ao} / ${at}</div><div class="bar"><i style="width:${at?ao/at*100:0}%"></i></div>`;
+  if(li>=0)h+=`<div class="row"><button id="resume" class="on" data-ri="${li}" data-rn="${Math.min(last.n,M[li].n-1)}">続きから：${esc(M[li].k)}　${esc(M[li].t)}　問${Math.min(last.n,M[li].n-1)+1}</button></div>`;
+  h+='</div><div class="tabs">';
+  for(const v in VOL)h+=`<button data-v="${v}" class="${v==vol?"on":""}">${VOL[v]}</button>`;h+="</div>";
+  const cs=M.filter(c=>c.k[0]==vol);let o=0,t=0;cs.forEach(c=>{o+=done(c)[0];t+=c.n});
+  h+=`<div class="note">${VOL[vol]}でできた問題 ${o} / ${t}</div><div class="bar"><i style="width:${t?o/t*100:0}%"></i></div>`;
+  cs.forEach((c,i)=>{const[d,x]=done(c);h+=`<button class="ch" data-i="${M.indexOf(c)}"><span class="k">${c.k.slice(1)}</span><span class="t">${esc(c.t)}</span><span class="p">○${d} ×${x} / ${c.n}</span></button>`});
+  h+='<p class="note">学習の記録（○×、続きの場所、解いた数）は、この端末のブラウザの中に残ります。別の端末には移りません。ブラウザの履歴やサイトのデータを消すと、記録も消えます。<br><button id="reset">記録を消す</button></p>';
+  m.innerHTML=h;scrollTo(0,0)}
+let cur=null;
+function id_(){let d=null;try{d=localStorage.getItem(KEY+"-id");if(!d){d=Array.from(crypto.getRandomValues(new Uint8Array(4)),x=>x.toString(16).padStart(2,"0")).join("").toUpperCase();localStorage.setItem(KEY+"-id",d)}}catch(e){}return d||"--------"}
+// 問題と答えは文字として画面に置かず、絵（canvas）に描く。選択・コピー・読み上げ用の取り出し・翻訳の拡張で文字を抜けない。
+function draw(cv,parts,size,color){const css=getComputedStyle(document.body),W=cv.parentNode.clientWidth,r=devicePixelRatio||1,lh=size*1.8;
+  const font=w=>`${w} ${size}px "Hiragino Sans","Noto Sans JP",sans-serif`,g=cv.getContext("2d");
+  const toks=[];for(const p of parts){if(p.blank!==undefined)toks.push({blank:p.blank});else if(p.tag)toks.push({tag:p.tag});else for(const ch of p.t.match(/[A-Za-z0-9.,\/%+\-]+|[\s\S]/gu)||[])toks.push({ch,b:p.b})}
+  const lay=(paint)=>{let x=0,y=0;for(const t of toks){g.font=font(t.b||t.tag?700:400);
+      let w=t.blank!==undefined?size*3.4:t.tag?g.measureText(t.tag).width+size*0.9:g.measureText(t.ch).width;
+      if(x+w>W-size&&x>0&&!(t.ch&&"、。）」％%".includes(t.ch))){x=0;y+=lh}
+      if(paint){const by=y+lh*0.68;g.fillStyle=color;
+        if(t.blank!==undefined){g.fillRect(x+size*0.2,by+3,w-size*0.4,1.5);if(t.blank){g.font=font(400);g.fillText(t.blank,x+w/2-size/2,by)}}
+        else if(t.tag){g.fillRect(x,y+lh*0.2,w-size*0.4,lh*0.66);g.fillStyle=css.getPropertyValue("--card");g.font=font(700);g.fillText(t.tag,x+size*0.25,by-1)}
+        else g.fillText(t.ch,x,by)}
+      x+=w}return y+lh};
+  const H=lay(false);cv.width=W*r;cv.height=H*r;cv.style.width=W+"px";cv.style.height=H+"px";g.scale(r,r);g.textBaseline="alphabetic";
+  g.save();g.globalAlpha=0.07;g.fillStyle=color;g.font=font(700);g.rotate(-0.25);const mk="内科大全 "+id_();for(let yy=20;yy<H+W;yy+=64)for(let xx=-W;xx<W;xx+=190)g.fillText(mk,xx,yy);g.restore();
+  lay(true)}
+function qparts(q){const out=[];if(q.startsWith("【症例】")){out.push({tag:"症例"});q=q.slice(4)}
+  q.split(/(（[　 ]*[①-③]?[　 ]*）)/).forEach(x=>{const m=x.match(/^（[　 ]*([①-③]?)[　 ]*）$/);if(m)out.push({blank:m[1]});else if(x)out.push({t:x})});return out}
+async function chap(i,n){const c=M[i],r=rec[c.k]=rec[c.k]||{};cur={i};
+  back.hidden=false;ttl.textContent=c.k+"　"+c.t;
+  const all=[...Array(c.n).keys()];let idx=all.filter(x=>!only||r[x]!=1);if(!idx.length){only=false;idx=all}
+  if(n===undefined||!idx.includes(n))n=idx.find(x=>x>=(n||0))??idx[0];cur.n=n;cur.open=false;cur.q=await open_(c,n);put("-last",{k:c.k,n});vol=c.k[0];
+  const nx=M[i+1]&&M[i+1].k[0]==c.k[0]?i+1:-1;
+  const pos=idx.indexOf(n);
+  m.innerHTML=`<div class="tabs"><button id="only" class="${only?"on":""}">×と未回答だけ</button></div>
+  <div class="q"><div class="n">問 ${n+1} / ${c.n}${r[n]==1?"　○":r[n]==2?"　×":""}</div><canvas id="cq"></canvas>
+  <div class="row" id="sr"><button id="show">答えを見る</button></div>
+  <div class="a" id="ans" hidden><canvas id="ca"></canvas><canvas id="ce" style="margin-top:6px"></canvas>
+  <div class="row"><button class="ok ${r[n]==1?"on":""}">○ できた</button><button class="ng ${r[n]==2?"on":""}">× もう一度</button></div></div></div>
+  <div class="row"><button id="prev" ${pos<=0?"disabled":""}>← 前</button><button id="next" ${pos>=idx.length-1?"disabled":""}>次 →</button>${pos>=idx.length-1&&nx>=0?`<button data-i="${nx}">次の章へ：${esc(M[nx].k)}　${esc(M[nx].t)}</button>`:""}</div>`;
+  m.dataset.i=i;cur.prev=idx[pos-1];cur.next=idx[pos+1];paint();scrollTo(0,0)}
+function paint(){if(!cur||!document.getElementById("cq"))return;const css=getComputedStyle(document.body),fg=css.getPropertyValue("--fg"),sub=css.getPropertyValue("--sub"),q=cur.q;
+  draw(document.getElementById("cq"),qparts(q[0]),16,fg);
+  if(cur.open){draw(document.getElementById("ca"),[{t:"答　",b:1},{t:q[1]}],16,fg);draw(document.getElementById("ce"),[{t:q[2]}],14.5,sub)}}
+addEventListener("resize",paint);
+back.addEventListener("click",()=>{cur=null});
+m.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+  if(b.dataset.v){vol=b.dataset.v;list()}else if(b.id=="resume"){only=false;chap(+b.dataset.ri,+b.dataset.rn)}else if(b.dataset.i){only=false;chap(+b.dataset.i)}
+  else if(b.id=="only"){only=!only;chap(+m.dataset.i,cur.n)}
+  else if(b.id=="prev"){chap(+m.dataset.i,cur.prev)}else if(b.id=="next"){chap(+m.dataset.i,cur.next)}
+  else if(b.id=="reset"){if(confirm("この端末の学習の記録をすべて消しますか。")){rec={};save();put("-last",null);put("-log",{});list()}}
+  else if(b.id=="show"){cur.open=true;document.getElementById("ans").hidden=false;document.getElementById("sr").hidden=true;paint()}
+  else if(b.classList.contains("ok")||b.classList.contains("ng")){const c=M[+m.dataset.i],v=b.classList.contains("ok")?1:2;
+    const first=!rec[c.k][cur.n];rec[c.k][cur.n]=v;save();if(first)logOne();
+    if(cur.next!==undefined)chap(+m.dataset.i,cur.next);
+    else if(only&&!Object.keys([...Array(c.n)]).some(x=>rec[c.k][x]!=1)){only=false;cur=null;list()}
+    else chap(+m.dataset.i,cur.n)}});
+back.onclick=list;
+["copy","cut","contextmenu","selectstart","dragstart"].forEach(t=>document.addEventListener(t,e=>{if(e.target.tagName!="INPUT")e.preventDefault()}));
+document.addEventListener("keydown",e=>{if((e.metaKey||e.ctrlKey)&&"cpsau".includes(e.key.toLowerCase())&&e.target.tagName!="INPUT")e.preventDefault()});
+(async()=>{let p=null;try{p=localStorage.getItem(KEY+"-pw")}catch(e){}if(p&&await unlock(p))list();else gate()})();
+})();
+</script></body></html>
